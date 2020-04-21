@@ -42,6 +42,16 @@ const kStepTableTextStyle = TextStyle(
   fontSize: 16.0,
   color: kPrimaryTextColour,
 );
+const kScheduleDateTextStyle = TextStyle(
+  fontSize: 16.0,
+  color: kAccentTextColour,
+  fontWeight: FontWeight.bold,
+);
+const kScheduleTitleTextStyle = TextStyle(
+  fontSize: 25.0,
+  color: kAccentTextColour,
+  fontWeight: FontWeight.bold,
+);
 
 // Dimensions
 const kBottomButtonHeight = 60.0;

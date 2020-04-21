@@ -9,4 +9,5 @@ class BakingStep {
   int duration;
   String durationUnit;
   String stepName;
+  DateTime stepStartTime;
 }

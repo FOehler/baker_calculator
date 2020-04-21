@@ -7,6 +7,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:bakercalculator/components/bottom_button.dart';
 import 'package:intl/intl.dart';
 import 'package:bakercalculator/components/baking_step.dart';
+import 'package:bakercalculator/screens/schedule_page.dart';
+import 'package:bakercalculator/components/step_list.dart';
 
 class InputPage extends StatefulWidget {
   @override
@@ -16,9 +18,23 @@ class InputPage extends StatefulWidget {
 class _InputPageState extends State<InputPage> {
   DateTime goalDateTime = DateTime.now();
   int sliderValue = 30;
-  String dropdownValue = 'Min';
+  String dropdownValue = 'Minutes';
   List<BakingStep> steps = new List();
   final myController = TextEditingController();
+
+  void calculateSchedule() {
+    DateTime stepStartTime = goalDateTime;
+    for (var i = steps.length - 1; i >= 0; i--) {
+      if (steps[i].durationUnit == "Minutes") {
+        stepStartTime =
+            stepStartTime.subtract(new Duration(minutes: steps[i].duration));
+      } else if (steps[i].durationUnit == "Hours") {
+        stepStartTime =
+            stepStartTime.subtract(new Duration(hours: steps[i].duration));
+      }
+      steps[i].stepStartTime = stepStartTime;
+    }
+  }
 
   @override
   void dispose() {
@@ -76,7 +92,7 @@ class _InputPageState extends State<InputPage> {
                               showTitleActions: true,
                               onChanged: (date) {}, onConfirm: (date) {
                             setState(() {
-                              goalDateTime = date;
+//                              goalDateTime = date;
                             });
                           },
                               currentTime: DateTime.now(),
@@ -128,47 +144,52 @@ class _InputPageState extends State<InputPage> {
                                     hintText: 'Enter Step Description...'),
                               ),
                             ),
-                            Row(
-                              children: <Widget>[
-                                Slider(
-                                  value: sliderValue.toDouble(),
-                                  min: 0.0,
-                                  max: 60.0,
-                                  activeColor: kPrimaryColour,
-                                  inactiveColor: kPrimaryTextColour,
-                                  onChanged: (double newValue) {
-                                    setState(() {
-                                      sliderValue = newValue.toInt();
-                                    });
-                                  },
-                                ),
-                                Container(
-                                  width: 25.0,
-                                  margin: EdgeInsets.only(right: 8.0),
-                                  child: Text(
-                                    sliderValue.toString(),
-                                    style: kAccentCardTextStyle,
-                                    textAlign: TextAlign.right,
+                            Container(
+                              width: screenWidth * 0.75,
+                              child: Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    child: Slider(
+                                      value: sliderValue.toDouble(),
+                                      min: 0.0,
+                                      max: 60.0,
+                                      activeColor: kPrimaryColour,
+                                      inactiveColor: kPrimaryTextColour,
+                                      onChanged: (double newValue) {
+                                        setState(() {
+                                          sliderValue = newValue.toInt();
+                                        });
+                                      },
+                                    ),
                                   ),
-                                ),
-                                DropdownButton(
-                                  value: dropdownValue,
-                                  style: kAccentCardTextStyle,
-                                  onChanged: (String newValue) {
-                                    setState(() {
-                                      dropdownValue = newValue;
-                                    });
-                                  },
-                                  items: <String>['Min', 'Hours']
-                                      .map<DropdownMenuItem<String>>(
-                                          (String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(value),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
+                                  Container(
+                                    width: 25.0,
+                                    margin: EdgeInsets.only(right: 8.0),
+                                    child: Text(
+                                      sliderValue.toString(),
+                                      style: kAccentCardTextStyle,
+                                      textAlign: TextAlign.right,
+                                    ),
+                                  ),
+                                  DropdownButton(
+                                    value: dropdownValue,
+                                    style: kAccentCardTextStyle,
+                                    onChanged: (String newValue) {
+                                      setState(() {
+                                        dropdownValue = newValue;
+                                      });
+                                    },
+                                    items: <String>['Minutes', 'Hours']
+                                        .map<DropdownMenuItem<String>>(
+                                            (String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(value),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
                             )
                           ],
                         ),
@@ -197,36 +218,21 @@ class _InputPageState extends State<InputPage> {
                 ),
               ),
             ),
-            Expanded(
-              child: ReusableCard(
-                colour: kLightPrimaryColour,
-                cardChild: Table(
-                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                    border: TableBorder(
-                      horizontalInside:
-                          BorderSide(width: 1.0, color: kDividerColour),
+            StepList(steps: steps),
+            BottomButton(
+                buttonTitle: 'CALCULATE SCHEDULE',
+                onTap: () {
+                  calculateSchedule();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SchedulePage(
+                        steps: steps,
+                        goalDateTime: goalDateTime,
+                      ),
                     ),
-                    columnWidths: <int, TableColumnWidth>{
-                      0: FixedColumnWidth(0.0),
-                      1: FixedColumnWidth(20.0),
-                      3: FixedColumnWidth(30.0),
-                      4: FixedColumnWidth(50.0),
-                    },
-                    children: [
-                      for (var i = 0; i < steps.length; i++)
-                        TableRow(children: <Widget>[
-                          Container(height: 25.0),
-                          Text(i.toString(), style: kStepTableTextStyle),
-                          Text(steps[i].stepName, style: kStepTableTextStyle),
-                          Text(steps[i].duration.toString(),
-                              style: kStepTableTextStyle),
-                          Text(steps[i].durationUnit,
-                              style: kStepTableTextStyle),
-                        ]),
-                    ]),
-              ),
-            ),
-            BottomButton(buttonTitle: 'CALCULATE', onTap: () {}),
+                  );
+                }),
           ],
         ));
   }
