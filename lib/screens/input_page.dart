@@ -9,6 +9,8 @@ import 'package:intl/intl.dart';
 import 'package:bakercalculator/components/baking_step.dart';
 import 'package:bakercalculator/screens/schedule_page.dart';
 import 'package:bakercalculator/components/step_list.dart';
+import 'package:bakercalculator/components/database_helpers.dart';
+import 'package:select_dialog/select_dialog.dart';
 
 class InputPage extends StatefulWidget {
   @override
@@ -21,6 +23,8 @@ class _InputPageState extends State<InputPage> {
   String dropdownValue = 'Minutes';
   List<BakingStep> steps = new List();
   final myController = TextEditingController();
+  final dbHelper = DatabaseHelper.instance;
+  final _textFieldController = TextEditingController();
 
   void calculateSchedule() {
     DateTime stepStartTime = goalDateTime;
@@ -33,6 +37,83 @@ class _InputPageState extends State<InputPage> {
             stepStartTime.subtract(new Duration(hours: steps[i].duration));
       }
       steps[i].stepStartTime = stepStartTime;
+    }
+  }
+
+  void _query() async {
+    final allRows = await dbHelper.queryAllRows();
+    print('query all rows:');
+    allRows.forEach((row) => print(row));
+  }
+
+  void _displayRecipeNameDialog(BuildContext context) async {
+    return showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('Save New Recipe'),
+            content: TextField(
+              controller: _textFieldController,
+              decoration: InputDecoration(hintText: "Recipe Name"),
+            ),
+            actions: <Widget>[
+              new FlatButton(
+                child: new Text('CANCEL'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              new FlatButton(
+                child: new Text('SAVE'),
+                onPressed: () {
+                  _insertRecipe(_textFieldController.text);
+                  _textFieldController.clear();
+                  Navigator.of(context).pop();
+                },
+              )
+            ],
+          );
+        });
+  }
+
+  void _insertRecipe(String recipeName) async {
+    // row to insert
+    for (var i = 0; i < steps.length; i++) {
+      Map<String, dynamic> row = {
+        DatabaseHelper.columnRecipe: recipeName,
+        DatabaseHelper.columnStepNumber: i,
+        DatabaseHelper.columnDescription: steps[i].stepName,
+        DatabaseHelper.columnDuration: steps[i].duration,
+        DatabaseHelper.columnDurationUnit: steps[i].durationUnit,
+      };
+      final id = await dbHelper.insert(row);
+      print('inserted row id: $id');
+    }
+  }
+
+  void _loadRecipe() async {
+    String ex1 = "No value selected";
+
+    SelectDialog.showModal<String>(
+      context,
+      label: "Simple Example",
+      selectedValue: ex1,
+      items: List.generate(50, (index) => "Item $index"),
+      onChange: (String selected) {
+        setState(() {
+          ex1 = selected;
+        });
+      },
+    );
+
+    final recipeRows = await dbHelper.queryRecipeRows('Butterzopf');
+    steps.clear();
+    for (var i = 0; i < recipeRows.length; i++) {
+      BakingStep newStep = BakingStep(
+          duration: recipeRows[i]["duration"],
+          durationUnit: recipeRows[i]["durationUnit"],
+          stepName: recipeRows[i]["description"]);
+      steps.add(newStep);
     }
   }
 
@@ -50,6 +131,8 @@ class _InputPageState extends State<InputPage> {
     var screenHeight = screenSize.height;
 
     return Scaffold(
+        resizeToAvoidBottomInset:
+            false, // Prevent resizing window when keyboard appears
         appBar: AppBar(
             backgroundColor: kPrimaryColour,
             title: Text(
@@ -219,6 +302,56 @@ class _InputPageState extends State<InputPage> {
               ),
             ),
             StepList(steps: steps),
+            Container(
+              margin: EdgeInsets.only(left: 10.0, right: 10.0),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: RaisedButton(
+                      onPressed: () {
+                        setState(() {
+                          _displayRecipeNameDialog(context);
+                        });
+                      },
+                      color: kAccentColour,
+                      child: Text('Save Recipe', style: kAccentCardTextStyle),
+                      padding: EdgeInsets.all(10.0),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 10.0,
+                  ),
+                  Expanded(
+                    child: RaisedButton(
+                      onPressed: () {
+                        setState(() {
+                          _query();
+                          _loadRecipe();
+                        });
+                      },
+                      color: kAccentColour,
+                      child: Text('Load Recipe', style: kAccentCardTextStyle),
+                      padding: EdgeInsets.all(10.0),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 10.0,
+                  ),
+                  Expanded(
+                    child: RaisedButton(
+                      onPressed: () {
+                        setState(() {
+                          steps.clear();
+                        });
+                      },
+                      color: kAccentColour,
+                      child: Text('Clear Steps', style: kAccentCardTextStyle),
+                      padding: EdgeInsets.all(10.0),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             BottomButton(
                 buttonTitle: 'CALCULATE SCHEDULE',
                 onTap: () {
